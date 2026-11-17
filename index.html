@@ -394,11 +394,16 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 (async()=>{
   if(SUPABASE_URL.includes('YOUR-')||SUPABASE_KEY.includes('YOUR-'))return fatal('설치가 아직 안 끝났어요. index.html 맨 위의 SUPABASE_URL과 SUPABASE_KEY를 채워주세요.');
   if(!window.supabase)return fatal('필요한 파일을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침 해주세요.');
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(SUPABASE_URL.trim()))return fatal('index.html의 SUPABASE_URL 형식이 달라요. https://프로젝트ID.supabase.co 처럼 .supabase.co 에서 끝나야 해요. (뒤에 / 나 rest/v1 이 붙으면 안 돼요)');
+  sb=window.supabase.createClient(SUPABASE_URL.trim(),SUPABASE_KEY.trim());
   let {data:{session}}=await sb.auth.getSession();
   if(!session){
     const r=await sb.auth.signInAnonymously();
-    if(r.error)return fatal(/disabled/i.test(r.error.message)?'Supabase에서 익명 로그인(Anonymous sign-ins)이 꺼져 있어요. 설치 안내 3단계를 확인해 주세요.':'장터에 연결하지 못했어요. 잠시 뒤 새로고침 해주세요. (장터가 오래 쉬어서 잠들었을 수도 있어요)');
+    if(r.error){const m=r.error.message||'',st=r.error.status||'';
+      return fatal(/disabled/i.test(m)?'Supabase에서 익명 로그인(Anonymous sign-ins)이 꺼져 있어요. 설치 안내 3단계를 확인해 주세요.'
+        :/secret/i.test(m)?'index.html에 secret 키가 들어가 있어요. publishable 키로 바꿔주세요.'
+        :/invalid api key|no api key/i.test(m)?'index.html의 SUPABASE_KEY가 맞지 않아요. 4단계를 확인해 주세요.'
+        :`장터에 연결하지 못했어요. 잠시 뒤 새로고침 해주세요. (오류: ${st} ${m})`)}
     session=r.data.session;
   }
   me=session.user.id;
