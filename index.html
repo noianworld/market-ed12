@@ -2,22 +2,29 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#9670B5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="밴드장터">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>밴드 중고장터</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* VOICE: 친근하고 실용적인 동네 악기 장터, 군더더기 없이
    IDEA: 합주실 게시판에 꽂힌 공연 포스터 + 악기점 가격표 스티커
    PICTURE: 물건 카드 그리드 자체, 형광 가격표 스티커가 상태를 말함
-   COLOUR and TYPE: 코발트 블루 밴드, 종이색 바탕, 형광 라임 스티커 / Black Han Sans + IBM Plex Sans KR
+   COLOUR and TYPE: 라벤더 보라 밴드, 종이색 바탕, 형광 라임 스티커 / Nanum Gothic
    LAYOUT: 파란 헤더 밴드 → 카테고리 칩 → 카드 그리드, 상세·등록은 대화상자 */
-:root{color-scheme:light dark;--bg:light-dark(#f5f4f0,#121317);--ink:light-dark(#15161b,#ecebe6);--card:light-dark(#fff,#1c1d23);--line:light-dark(#dddbd3,#2d2f37);--sub:light-dark(#5d5e67,#a4a5ae);--blue:light-dark(#1f3fd1,#2f4fe6);--lime:#d7ff3a;--hold:#ff9a2e;--soft:light-dark(#ecebe5,#25262d)}
+:root{color-scheme:light dark;--bg:light-dark(#f5f4f0,#121317);--ink:light-dark(#15161b,#ecebe6);--card:light-dark(#fff,#1c1d23);--line:light-dark(#dddbd3,#2d2f37);--sub:light-dark(#5d5e67,#a4a5ae);--blue:light-dark(#9670B5,#6A4A8C);--lime:#d7ff3a;--hold:#ff9a2e;--soft:light-dark(#ecebe5,#25262d)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans KR",system-ui,sans-serif;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Nanum Gothic",system-ui,sans-serif;overflow-x:clip}
 .band{padding:clamp(22px,4vw,48px) max(5vw,16px)}
 .wrap{max-width:1240px;margin:0 auto}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -25,7 +32,7 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--lime);outline-offset:2px}
 header{background:var(--blue);color:#fff;position:relative;overflow:hidden}
 header .wrap{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;justify-content:space-between;position:relative}
-header h1{font:400 clamp(32px,6vw,52px)/1.05 "Black Han Sans",sans-serif;margin:0;text-wrap:balance}
+header h1{font:800 clamp(32px,6vw,52px)/1.05 "Nanum Gothic",sans-serif;margin:0;text-wrap:balance}
 header p{margin:8px 0 0;opacity:.85}
 header svg.deco{position:absolute;right:-40px;top:-30px;width:260px;height:260px;opacity:.14;pointer-events:none}
 .hbtns{display:flex;gap:8px;flex-wrap:wrap}
@@ -86,12 +93,41 @@ label.f textarea{min-height:110px;resize:vertical}
 .mem{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .gate{position:fixed;inset:0;background:var(--blue);color:#fff;display:grid;place-items:center;z-index:20;padding:20px}
 .gate form{width:min(380px,100%);display:flex;flex-direction:column;gap:14px;text-align:center}
-.gate h2{font:400 36px/1.1 "Black Han Sans",sans-serif;margin:0}
+.gate h2{font:800 36px/1.1 "Nanum Gothic",sans-serif;margin:0}
 .gate input{min-height:52px;border-radius:12px;border:0;padding:0 16px;font-size:18px;text-align:center;color:#15161b;background:#fff}
 .err{color:#ffd0cc;min-height:1.4em;margin:0}
 .dlg-err{color:#d6372b;margin:0;font-size:14px}
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){.item{transition:none}.item:hover{transform:none}}
+/* ---------- 휴대폰 ---------- */
+@media(max-width:600px){
+  header.band{padding:calc(18px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 18px max(16px,env(safe-area-inset-left))}
+  header h1{font-size:30px}
+  header p{font-size:14px;margin-top:4px}
+  header .wrap{align-items:center;flex-wrap:nowrap}
+  header svg.deco{width:160px;height:160px;right:-30px;top:-20px}
+  #setBtn{min-height:40px;padding:0 14px}
+  .bar{padding:10px 16px}
+  .tog{font-size:14px}
+  main.band{padding:14px 16px calc(110px + env(safe-area-inset-bottom))}
+  /* 목록형: 사진 왼쪽, 글 오른쪽 */
+  .grid{grid-template-columns:minmax(0,1fr);gap:0}
+  .item{flex-direction:row;gap:14px;align-items:flex-start;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:14px 0}
+  .item:hover{transform:none}
+  .ph{width:108px;flex:none;aspect-ratio:1;border-radius:12px}
+  .ph .tag{left:6px;top:6px;font-size:12px;padding:3px 8px 3px 13px}
+  .meta{padding:2px 0 0;gap:3px}
+  .meta b{font-size:16px;font-weight:500}
+  .price{font-size:17px}
+  /* 올리기 버튼: 엄지 닿는 곳에 떠 있는 버튼 */
+  #addBtn{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:10;min-height:56px;padding:0 22px;font-size:17px;box-shadow:0 6px 20px rgba(10,20,80,.35)}
+  /* 창: 아래에서 올라오는 시트 */
+  dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:20px 20px 0 0;max-height:92dvh;padding-bottom:env(safe-area-inset-bottom)}
+  .dh{padding:12px 16px}
+  .db{padding:16px}
+  .gal img{max-height:46vh}
+  .db .row:last-child .btn{flex:1;justify-content:center}
+}
 
 .gate .small{color:#fff;opacity:.8}
 .loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:30;color:var(--sub)}
@@ -123,8 +159,8 @@ const SUPABASE_KEY = 'sb_publishable_GwF9Qvd8NFwObGYqogKgpw_OPrwFRwU';
   <svg class="deco" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4C26 4 8 14 8 30c0 22 26 54 42 66 16-12 42-44 42-66C92 14 74 4 50 4z" fill="#fff"/></svg>
   <div class="wrap">
     <div>
-      <h1 id="title">우리 밴드 중고장터</h1>
-      <p>밴드원끼리만 사고파는 악기·장비 게시판</p>
+      <h1 id="title">MARKET-ED12</h1>
+      <p>Buy once, Cry once</p>
     </div>
     <div class="hbtns">
       <button class="btn ghost" id="setBtn">설정</button>
