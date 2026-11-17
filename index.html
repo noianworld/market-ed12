@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>밴드 중고장터</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* VOICE: 친근하고 실용적인 동네 악기 장터, 군더더기 없이
+   IDEA: 합주실 게시판에 꽂힌 공연 포스터 + 악기점 가격표 스티커
+   PICTURE: 물건 카드 그리드 자체, 형광 가격표 스티커가 상태를 말함
+   COLOUR and TYPE: 코발트 블루 밴드, 종이색 바탕, 형광 라임 스티커 / Black Han Sans + IBM Plex Sans KR
+   LAYOUT: 파란 헤더 밴드 → 카테고리 칩 → 카드 그리드, 상세·등록은 대화상자 */
+:root{color-scheme:light dark;--bg:light-dark(#f5f4f0,#121317);--ink:light-dark(#15161b,#ecebe6);--card:light-dark(#fff,#1c1d23);--line:light-dark(#dddbd3,#2d2f37);--sub:light-dark(#5d5e67,#a4a5ae);--blue:light-dark(#1f3fd1,#2f4fe6);--lime:#d7ff3a;--hold:#ff9a2e;--soft:light-dark(#ecebe5,#25262d)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans KR",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(22px,4vw,48px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+header{background:var(--blue);color:#fff;position:relative;overflow:hidden}
+header .wrap{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;justify-content:space-between;position:relative}
+header h1{font:400 clamp(32px,6vw,52px)/1.05 "Black Han Sans",sans-serif;margin:0;text-wrap:balance}
+header p{margin:8px 0 0;opacity:.85}
+header svg.deco{position:absolute;right:-40px;top:-30px;width:260px;height:260px;opacity:.14;pointer-events:none}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{min-height:44px;padding:0 18px;border-radius:999px;border:2px solid transparent;font-weight:700;background:var(--soft);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn.pri{background:var(--lime);color:#15161b}
+.btn.ghost{background:transparent;border-color:currentColor}
+.btn.danger{background:transparent;border-color:#d6372b;color:#d6372b}
+.btn.danger.arm{background:#d6372b;color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px max(5vw,16px)}
+.bar .wrap{display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chip{flex:none;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-weight:500;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip small{opacity:.6;margin-left:4px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search{flex:1 1 220px;min-height:44px;border:1.5px solid var(--line);border-radius:12px;padding:0 14px;background:var(--card);font-size:16px}
+.tog{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--sub)}
+.tog input{width:20px;height:20px;accent-color:var(--blue)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:18px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;text-align:left;padding:0;display:flex;flex-direction:column;transition:transform .15s}
+.item:hover{transform:translateY(-3px)}
+.ph{aspect-ratio:4/3;background:var(--soft);position:relative;display:grid;place-items:center;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.ph svg{width:46%;opacity:.35}
+.tag{position:absolute;left:10px;top:10px;background:var(--lime);color:#15161b;font-weight:700;font-size:13px;padding:4px 10px 4px 16px;border-radius:4px 8px 8px 4px;clip-path:polygon(9px 0,100% 0,100% 100%,9px 100%,0 50%);white-space:nowrap}
+.tag.hold{background:var(--hold)}.tag.sold{background:#9a9ba3;color:#fff}
+.item.sold .ph img{filter:grayscale(1) opacity(.6)}
+.meta{padding:12px 14px 14px;display:flex;flex-direction:column;gap:2px}
+.meta b{font-size:16px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.price{font-size:19px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.small{font-size:13px;color:var(--sub)}
+.empty{text-align:center;padding:56px 16px;color:var(--sub)}
+.empty svg{width:120px;margin-bottom:12px}
+.note{background:var(--soft);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:15px}
+dialog{border:0;border-radius:20px;padding:0;background:var(--card);color:var(--ink);width:min(640px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,12,30,.55)}
+.dh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:1}
+.dh h2{margin:0;font-size:20px}
+.x{width:44px;height:44px;border-radius:50%;border:0;background:var(--soft);font-size:20px}
+.db{padding:20px;display:flex;flex-direction:column;gap:14px}
+label.f{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:15px}
+label.f input,label.f select,label.f textarea{min-height:46px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:16px;font-weight:400}
+label.f textarea{min-height:110px;resize:vertical}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:14px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs div{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;background:var(--soft)}
+.thumbs img{width:100%;height:100%;object-fit:cover}
+.thumbs button{position:absolute;right:3px;top:3px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff}
+.gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory}
+.gal img{flex:none;width:100%;max-height:58vh;object-fit:contain;background:var(--soft);border-radius:12px;scroll-snap-align:start}
+.stbtns{display:flex;gap:6px;flex-wrap:wrap}
+.stbtns button{min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:transparent;font-weight:500}
+.stbtns button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.contact{background:var(--soft);border-radius:12px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.contact a{color:var(--blue);font-weight:700}
+.desc{white-space:pre-wrap;margin:0}
+.mem{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.gate{position:fixed;inset:0;background:var(--blue);color:#fff;display:grid;place-items:center;z-index:20;padding:20px}
+.gate form{width:min(380px,100%);display:flex;flex-direction:column;gap:14px;text-align:center}
+.gate h2{font:400 36px/1.1 "Black Han Sans",sans-serif;margin:0}
+.gate input{min-height:52px;border-radius:12px;border:0;padding:0 16px;font-size:18px;text-align:center;color:#15161b;background:#fff}
+.err{color:#ffd0cc;min-height:1.4em;margin:0}
+.dlg-err{color:#d6372b;margin:0;font-size:14px}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.item{transition:none}.item:hover{transform:none}}
+
+.gate .small{color:#fff;opacity:.8}
+.loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:30;color:var(--sub)}
+</style>
+</head>
+<body>
+<script>
+/* ===== 여기 두 줄만 바꾸세요 (Supabase > Project Settings > API) ===== */
+const SUPABASE_URL = 'https://ymxcckwktjyikerjtwwx.supabase.co/rest/v1/';
+const SUPABASE_KEY = 'sb_publishable_GwF9Qvd8NFwObGYqogKgpw_OPrwFRwU';
+/* ==================================================================== */
+</script>
+
+<div class="loading" id="loading">장터 여는 중…</div>
+
+<div class="gate" id="gate" hidden>
+  <form id="gateForm">
+    <h2>밴드 중고장터</h2>
+    <p>밴드 단톡방에 공유된 초대코드와<br>장터에서 쓸 이름을 적어주세요.</p>
+    <input id="gateCode" autocomplete="off" placeholder="초대코드" aria-label="초대코드" required>
+    <input id="gateNick" maxlength="20" placeholder="이름 (예: 베이스 민수)" aria-label="이름" required>
+    <button class="btn pri" id="gateBtn" style="justify-content:center">들어가기</button>
+    <p class="err" id="gateErr"></p>
+    <p class="small">이 브라우저에서 한 번 들어오면 다음부터는 바로 열려요.</p>
+  </form>
+</div>
+
+<header class="band">
+  <svg class="deco" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 4C26 4 8 14 8 30c0 22 26 54 42 66 16-12 42-44 42-66C92 14 74 4 50 4z" fill="#fff"/></svg>
+  <div class="wrap">
+    <div>
+      <h1 id="title">우리 밴드 중고장터</h1>
+      <p>밴드원끼리만 사고파는 악기·장비 게시판</p>
+    </div>
+    <div class="hbtns">
+      <button class="btn ghost" id="setBtn">설정</button>
+      <button class="btn pri" id="addBtn">+ 물건 올리기</button>
+    </div>
+  </div>
+</header>
+
+<div class="bar">
+  <div class="wrap">
+    <div class="chips" id="chips"></div>
+    <div class="row">
+      <input class="search" id="q" type="search" placeholder="물건 이름으로 찾기" aria-label="검색">
+      <label class="tog"><input type="checkbox" id="hideSold"> 판매완료 숨기기</label>
+    </div>
+  </div>
+</div>
+
+<main class="band" style="padding-top:22px">
+  <div class="wrap">
+    <div class="note" id="note" hidden></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden>
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6C27 6 10 16 10 31c0 21 25 52 40 63 15-11 40-42 40-63C90 16 73 6 50 6z" fill="var(--blue)" opacity=".85"/><path d="M50 22v40M38 50l12 12 12-12" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <p id="emptyMsg">아직 올라온 물건이 없어요. 첫 물건을 올려보세요.</p>
+    </div>
+  </div>
+</main>
+
+<dialog id="view"><div class="dh"><h2 id="vTitle"></h2><button class="x" data-close aria-label="닫기">×</button></div><div class="db" id="vBody"></div></dialog>
+
+<dialog id="form"><form id="itemForm">
+  <div class="dh"><h2 id="fTitle">물건 올리기</h2><button type="button" class="x" data-close aria-label="닫기">×</button></div>
+  <div class="db">
+    <label class="f">물건 이름<input id="fName" required maxlength="80" placeholder="예: 펜더 멕시코 스트랫"></label>
+    <div class="two">
+      <label class="f">카테고리<select id="fCat"></select></label>
+      <label class="f">상태<select id="fCond"></select></label>
+    </div>
+    <label class="f">가격 (원, 나눔은 0)<input id="fPrice" type="number" min="0" step="1000" inputmode="numeric" required placeholder="350000"></label>
+    <label class="f">설명<textarea id="fDesc" maxlength="2000" placeholder="구입 시기, 하자, 구성품, 직거래 장소 등"></textarea></label>
+    <label class="f">연락 방법<input id="fContact" maxlength="200" placeholder="카톡 아이디 또는 오픈채팅 링크"></label>
+    <label class="f"><span id="fPwLabel">글 비밀번호</span><input id="fPw" type="password" minlength="4" maxlength="40" autocomplete="new-password" placeholder="4자 이상"></label>
+    <p class="small" id="fPwHelp" style="margin:-6px 0 0">이 비밀번호를 아는 사람은 누구든 이 글을 고치거나 지울 수 있어요. 다른 데서 쓰는 중요한 비밀번호는 넣지 마세요.</p>
+    <div>
+      <div style="font-weight:500;font-size:15px;margin-bottom:6px">사진 (최대 4장)</div>
+      <div class="thumbs" id="fThumbs"></div>
+      <input type="file" id="fFile" accept="image/*" multiple style="margin-top:8px">
+    </div>
+    <p class="dlg-err" id="fErr"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button type="button" class="btn" data-close>취소</button>
+      <button class="btn pri" id="fSave">올리기</button>
+    </div>
+  </div>
+</form></dialog>
+
+<dialog id="settings"><div class="dh"><h2>설정</h2><button class="x" data-close aria-label="닫기">×</button></div>
+  <div class="db">
+    <label class="f">내 이름<input id="sNick" maxlength="20"></label>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="sNickSave">이름 저장</button></div>
+    <div id="sAdmin" hidden style="display:flex;flex-direction:column;gap:14px">
+      <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:4px 0">
+      <h3 style="margin:0;font-size:17px">관리자 메뉴</h3>
+      <label class="f">장터 이름<input id="sName" maxlength="40"></label>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="sNameSave">장터 이름 저장</button></div>
+      <label class="f">새 초대코드<input id="sCode" maxlength="40" autocomplete="off" placeholder="4자 이상"></label>
+      <p class="small" style="margin:0">지금 코드는 보안상 보여주지 않아요. 바꾸면 이미 들어온 밴드원은 그대로 쓰고, 새로 들어올 사람만 새 코드를 써요.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="sCodeSave">초대코드 바꾸기</button></div>
+      <h3 style="margin:8px 0 0;font-size:17px">관리자 지정</h3>
+      <p class="small" style="margin:0">관리자는 다른 사람이 올린 물건도 고치거나 지울 수 있어요.</p>
+      <div id="sMembers"></div>
+    </div>
+    <p class="small" id="sMsg" style="margin:0" role="status"></p>
+  </div>
+</dialog>
+
+<script>
+{
+const CATS=[['guitar','기타'],['bass','베이스'],['drum','드럼·타악기'],['keys','건반·신디'],['fx','이펙터·페달'],['amp','앰프'],['audio','마이크·음향'],['acc','케이블·소모품'],['etc','그 외']];
+const CATN=Object.fromEntries(CATS);
+const ST={sale:'판매중',hold:'예약중',sold:'판매완료'};
+const CONDS=['새것','거의 새것','사용감 있음','수리 필요'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const won=n=>Number(n)===0?'나눔':Number(n||0).toLocaleString('ko-KR')+'원';
+const ts=v=>Date.parse(v)||Date.now();
+const ago=v=>{const t=ts(v),m=Math.floor((Date.now()-t)/60000);if(m<1)return'방금';if(m<60)return m+'분 전';const h=Math.floor(m/60);if(h<24)return h+'시간 전';const d=Math.floor(h/24);return d<30?d+'일 전':new Date(t).toLocaleDateString('ko-KR')};
+const PICK='<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6C27 6 10 16 10 31c0 21 25 52 40 63 15-11 40-42 40-63C90 16 73 6 50 6z" fill="currentColor"/></svg>';
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+let sb=null,me=null,meRow=null,items=[],members={},settings={name:''},unlocked=new Set(),pwItems=new Set();
+let cat='all',q='',hideSold=ls.get('hideSold')==='1';
+let editing=null,photos=[],fresh=[],saved=false,uploading=0,current=null;
+
+const isAdmin=()=>!!meRow?.is_admin;
+const canEdit=it=>!!me&&(it.author===me||isAdmin()||unlocked.has(it.id));
+const who=id=>id===me?'나':(members[id]?.nickname||'밴드원');
+const pub=p=>sb.storage.from('photos').getPublicUrl(p).data.publicUrl;
+function note(t){const n=$('#note');n.hidden=!t;n.textContent=t||''}
+function fatal(t){$('#loading').textContent=t}
+
+$('#fCat').innerHTML=CATS.map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+$('#fCond').innerHTML=CONDS.map(c=>`<option>${c}</option>`).join('');
+$('#hideSold').checked=hideSold;
+
+/* ---------- 불러오기 ---------- */
+async function loadMe(){const {data}=await sb.from('members').select('*').eq('user_id',me).maybeSingle();meRow=data||null}
+async function loadAll(){
+  const [s,m,i,u,p]=await Promise.all([
+    sb.from('settings').select('name').eq('id',1).maybeSingle(),
+    sb.from('members').select('*').order('joined_at'),
+    sb.from('items').select('*').order('created_at',{ascending:false}),
+    sb.from('item_editors').select('item_id'),
+    sb.rpc('pw_items')]);
+  if(i.error){note('물건 목록을 불러오지 못했어요. 새로고침 해주세요.');return}
+  unlocked=new Set((u.data||[]).map(x=>x.item_id));
+  pwItems=new Set((p.data||[]).map(x=>typeof x==='string'?x:Object.values(x)[0]));
+  settings=s.data||settings;members=Object.fromEntries((m.data||[]).map(x=>[x.user_id,x]));items=i.data||[];
+  meRow=members[me]||meRow;note('');render();
+}
+
+/* ---------- 그리기 ---------- */
+function renderChips(){
+  const cnt=k=>items.filter(i=>(k==='all'||i.cat===k)&&!(hideSold&&i.status==='sold')).length;
+  $('#chips').innerHTML=[['all','전체'],...CATS].map(([k,v])=>`<button class="chip" data-cat="${k}" aria-pressed="${cat===k}">${v}<small>${cnt(k)}</small></button>`).join('');
+}
+function render(){
+  document.title=$('#title').textContent=settings.name||'우리 밴드 중고장터';
+  renderChips();
+  const qq=q.trim().toLowerCase();
+  const list=items.filter(i=>(cat==='all'||i.cat===cat)&&!(hideSold&&i.status==='sold')&&(!qq||(i.title||'').toLowerCase().includes(qq)||(i.descr||'').toLowerCase().includes(qq)));
+  $('#grid').innerHTML=list.map(i=>`<button class="item ${i.status==='sold'?'sold':''}" data-id="${esc(i.id)}">
+    <div class="ph">${i.photos?.length?`<img src="${esc(pub(i.photos[0]))}" alt="" loading="lazy">`:PICK}<span class="tag ${i.status}">${ST[i.status]||'판매중'}</span></div>
+    <div class="meta"><span class="small">${esc(CATN[i.cat]||'그 외')} · ${esc(i.cond)}</span><b>${esc(i.title)}</b><span class="price">${won(i.price)}</span><span class="small">${esc(who(i.author))} · ${ago(i.created_at)}</span></div></button>`).join('');
+  $('#empty').hidden=list.length>0;
+  $('#emptyMsg').textContent=items.length?'조건에 맞는 물건이 없어요.':'아직 올라온 물건이 없어요. 첫 물건을 올려보세요.';
+  if(current&&$('#view').open){items.some(x=>x.id===current)?openView(current):$('#view').close()}
+}
+
+/* ---------- 상세 보기 ---------- */
+function openView(id){
+  const it=items.find(x=>x.id===id);if(!it)return;current=id;
+  $('#vTitle').textContent=it.title;
+  const ed=canEdit(it),c=(it.contact||'').trim(),isUrl=/^https?:\/\//i.test(c);
+  const edited=ts(it.updated_at)-ts(it.created_at)>60000;
+  $('#vBody').innerHTML=`
+    ${it.photos?.length?`<div class="gal">${it.photos.map(p=>`<img src="${esc(pub(p))}" alt="">`).join('')}</div>`:''}
+    <div class="row" style="justify-content:space-between"><span class="price" style="font-size:26px">${won(it.price)}</span><span class="tag ${it.status}" style="position:static">${ST[it.status]}</span></div>
+    <div class="small">${esc(CATN[it.cat]||'그 외')} · ${esc(it.cond)} · ${esc(who(it.author))} · ${ago(it.created_at)}${edited?' (수정됨)':''}</div>
+    ${it.descr?`<p class="desc">${esc(it.descr)}</p>`:''}
+    ${c?`<div class="contact"><span>${isUrl?`<a href="${esc(c)}" target="_blank" rel="noopener">오픈채팅 열기</a>`:'연락: <b>'+esc(c)+'</b>'}</span><button class="btn" id="cp">복사</button></div>`:'<p class="small" style="margin:0">연락 방법이 없어요. 단톡방에서 물어봐 주세요.</p>'}
+    ${ed?`<div><div class="small" style="margin-bottom:6px">판매 상태 바꾸기</div><div class="stbtns">${Object.entries(ST).map(([k,v])=>`<button data-st="${k}" aria-pressed="${it.status===k}">${v}</button>`).join('')}</div></div>
+    <p class="dlg-err" id="vErr"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn danger" id="del">삭제</button><button class="btn pri" id="edit">고치기</button></div>`
+    :pwItems.has(it.id)?`<form id="unlock" class="contact" style="background:transparent;border:1.5px dashed var(--line)">
+      <span class="small" style="flex:1 1 100%">글 비밀번호를 알면 이 글을 고칠 수 있어요.</span>
+      <input id="uPw" type="password" autocomplete="off" placeholder="글 비밀번호" aria-label="글 비밀번호" style="flex:1 1 160px;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 12px;background:var(--bg);font-size:16px">
+      <button class="btn" id="uBtn">수정 권한 받기</button>
+      <p class="dlg-err" id="uErr" style="flex:1 1 100%"></p></form>`:''}`;
+  if(!$('#view').open)$('#view').showModal();
+  $('#cp')?.addEventListener('click',async ev=>{try{await navigator.clipboard.writeText(c);ev.target.textContent='복사됨'}catch(e){ev.target.textContent='직접 복사해 주세요'}});
+  $('#unlock')?.addEventListener('submit',async ev=>{ev.preventDefault();const pw=$('#uPw').value;if(!pw)return;
+    $('#uBtn').disabled=true;$('#uErr').textContent='';
+    const {data,error}=await sb.rpc('unlock_item',{target:it.id,pw});
+    if(error||!data){$('#uBtn').disabled=false;$('#uErr').textContent='비밀번호가 맞지 않아요.';return}
+    unlocked.add(it.id);openView(it.id)});
+  if(!ed)return;
+  $('#vBody').querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',async()=>{
+    if(b.dataset.st===it.status)return;
+    const {error}=await sb.from('items').update({status:b.dataset.st}).eq('id',it.id);
+    if(error)$('#vErr').textContent='저장하지 못했어요.';else{it.status=b.dataset.st;render()}}));
+  $('#edit').addEventListener('click',()=>{$('#view').close();openForm(it)});
+  const del=$('#del');del.addEventListener('click',async()=>{
+    if(!del.classList.contains('arm')){del.classList.add('arm');del.textContent='한 번 더 누르면 삭제';return}
+    const {error}=await sb.from('items').delete().eq('id',it.id);
+    if(error){$('#vErr').textContent='삭제하지 못했어요.';return}
+    if(it.photos?.length)sb.storage.from('photos').remove(it.photos);
+    items=items.filter(x=>x.id!==it.id);$('#view').close();render()});
+}
+
+/* ---------- 등록·수정 ---------- */
+function thumbs(){
+  $('#fThumbs').innerHTML=photos.map((p,i)=>`<div><img src="${esc(pub(p))}" alt=""><button type="button" data-rm="${i}" aria-label="사진 빼기">×</button></div>`).join('')+(uploading?`<div style="display:grid;place-items:center" class="small">올리는 중…</div>`:'');
+  $('#fFile').hidden=photos.length+uploading>=4;$('#fSave').disabled=uploading>0;
+}
+function openForm(it){
+  editing=it||null;photos=[...(it?.photos||[])];fresh=[];saved=false;
+  $('#fTitle').textContent=it?'물건 고치기':'물건 올리기';$('#fSave').textContent=it?'저장':'올리기';
+  $('#fName').value=it?.title||'';$('#fCat').value=it?.cat||(cat!=='all'?cat:'guitar');$('#fCond').value=it?.cond||'사용감 있음';
+  $('#fPrice').value=it?.price??'';$('#fDesc').value=it?.descr||'';$('#fContact').value=it?it.contact:(ls.get('contact')||'');
+  $('#fPw').value='';$('#fPw').required=!it;
+  $('#fPwLabel').textContent=it?(pwItems.has(it.id)?'글 비밀번호 바꾸기 (바꿀 때만 입력)':'글 비밀번호 정하기 (선택)'):'글 비밀번호';
+  $('#fErr').textContent='';$('#fFile').value='';thumbs();$('#form').showModal();
+}
+function shrink(file){return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{const s=Math.min(1,1600/Math.max(img.width,img.height)),cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(u);cv.toBlob(b=>b?res(b):rej(),'image/jpeg',.85)};
+  img.onerror=()=>{URL.revokeObjectURL(u);rej()};img.src=u})}
+$('#fFile').addEventListener('change',async e=>{
+  const files=[...e.target.files].slice(0,4-photos.length-uploading);e.target.value='';
+  for(const f of files){uploading++;thumbs();
+    try{const b=await shrink(f),path=`${me}/${crypto.randomUUID()}.jpg`;
+      const {error}=await sb.storage.from('photos').upload(path,b,{contentType:'image/jpeg'});
+      if(error)throw error;photos.push(path);fresh.push(path)}catch(err){$('#fErr').textContent='사진 하나를 올리지 못했어요. (5MB 이하 이미지만 가능)'}
+    uploading--;thumbs()}});
+$('#fThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(b){photos.splice(+b.dataset.rm,1);thumbs()}});
+$('#form').addEventListener('close',()=>{ // 저장 안 하고 닫으면 새로 올린 사진 정리
+  if(!saved){const gone=fresh.filter(p=>!(editing?.photos||[]).includes(p));if(gone.length)sb.storage.from('photos').remove(gone)}});
+$('#itemForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(uploading)return;
+  const data={title:$('#fName').value.trim(),cat:$('#fCat').value,cond:$('#fCond').value,price:Math.max(0,Math.round(+$('#fPrice').value||0)),
+    descr:$('#fDesc').value.trim(),contact:$('#fContact').value.trim(),photos};
+  const pw=$('#fPw').value;
+  if(!data.title){$('#fErr').textContent='물건 이름을 적어주세요.';return}
+  if((!editing||pw)&&pw.length<4){$('#fErr').textContent='글 비밀번호는 4자 이상으로 정해주세요.';return}
+  ls.set('contact',data.contact);$('#fSave').disabled=true;
+  const r=editing?await sb.from('items').update(data).eq('id',editing.id).select('id'):await sb.from('items').insert(data).select('id');
+  if(r.error||!r.data?.length){$('#fSave').disabled=false;$('#fErr').textContent='저장하지 못했어요. 잠시 뒤 다시 해주세요.';return}
+  saved=true;
+  if(pw){const {error}=await sb.rpc('set_item_password',{target:r.data[0].id,pw});
+    if(error){$('#fSave').disabled=false;editing=items.find(x=>x.id===r.data[0].id)||{id:r.data[0].id,photos};
+      $('#fErr').textContent='글은 저장됐지만 비밀번호를 정하지 못했어요. 다시 저장을 눌러주세요.';loadAll();return}}
+  $('#fSave').disabled=false;
+  if(editing){const gone=(editing.photos||[]).filter(p=>!photos.includes(p));if(gone.length)sb.storage.from('photos').remove(gone)}
+  $('#form').close();loadAll();
+});
+
+/* ---------- 설정 ---------- */
+function renderMembers(){
+  $('#sMembers').innerHTML=Object.values(members).filter(m=>m.user_id!==me).map(m=>`<label class="mem"><span>${esc(m.nickname)}</span><input type="checkbox" data-mg="${esc(m.user_id)}" ${m.is_admin?'checked':''} style="width:22px;height:22px" aria-label="${esc(m.nickname)} 관리자"></label>`).join('')||'<p class="small">아직 다른 밴드원이 없어요.</p>';
+}
+const msg=t=>{$('#sMsg').textContent=t};
+$('#setBtn').addEventListener('click',()=>{$('#sNick').value=meRow?.nickname||'';$('#sName').value=settings.name||'';$('#sCode').value='';msg('');
+  $('#sAdmin').hidden=!isAdmin();if(isAdmin())renderMembers();$('#settings').showModal()});
+$('#sNickSave').addEventListener('click',async()=>{const v=$('#sNick').value.trim();if(!v)return msg('이름을 적어주세요.');
+  const {error}=await sb.from('members').update({nickname:v}).eq('user_id',me);msg(error?'저장하지 못했어요.':'이름을 바꿨어요.');if(!error)loadAll()});
+$('#sNameSave').addEventListener('click',async()=>{const {error}=await sb.from('settings').update({name:$('#sName').value.trim()||'우리 밴드 중고장터'}).eq('id',1);
+  msg(error?'저장하지 못했어요.':'장터 이름을 바꿨어요.');if(!error)loadAll()});
+$('#sCodeSave').addEventListener('click',async()=>{const v=$('#sCode').value.trim();if(v.length<4)return msg('초대코드는 4자 이상이어야 해요.');
+  const {error}=await sb.rpc('set_invite_code',{code:v});msg(error?'바꾸지 못했어요.':'초대코드를 바꿨어요. 단톡방에 새 코드를 알려주세요.');if(!error)$('#sCode').value=''});
+$('#sMembers').addEventListener('change',async e=>{const id=e.target.dataset.mg;if(!id)return;
+  const {error}=await sb.rpc('set_admin',{target:id,val:e.target.checked});
+  if(error){e.target.checked=!e.target.checked;msg('바꾸지 못했어요.')}else{members[id].is_admin=e.target.checked;msg('관리자를 바꿨어요.')}});
+
+/* ---------- 입장 ---------- */
+$('#gateForm').addEventListener('submit',async e=>{
+  e.preventDefault();const code=$('#gateCode').value.trim(),nick=$('#gateNick').value.trim();
+  if(!code||!nick)return;$('#gateBtn').disabled=true;$('#gateErr').textContent='';
+  const {data,error}=await sb.rpc('join_market',{code,nick});
+  $('#gateBtn').disabled=false;
+  if(error||!data){$('#gateErr').textContent='코드가 맞지 않아요. 단톡방에서 다시 확인해 주세요.';return}
+  await loadMe();$('#gate').hidden=true;loadAll();
+});
+
+/* ---------- 이벤트 ---------- */
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('[data-cat]');if(b){cat=b.dataset.cat;render()}});
+$('#q').addEventListener('input',e=>{q=e.target.value;render()});
+$('#hideSold').addEventListener('change',e=>{hideSold=e.target.checked;ls.set('hideSold',hideSold?'1':'0');render()});
+$('#grid').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b)openView(b.dataset.id)});
+$('#addBtn').addEventListener('click',()=>openForm());
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+$('#view').addEventListener('close',()=>{current=null});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&meRow&&!document.querySelector('dialog[open]'))loadAll()});
+
+/* ---------- 시작 ---------- */
+(async()=>{
+  if(SUPABASE_URL.includes('YOUR-')||SUPABASE_KEY.includes('YOUR-'))return fatal('설치가 아직 안 끝났어요. index.html 맨 위의 SUPABASE_URL과 SUPABASE_KEY를 채워주세요.');
+  if(!window.supabase)return fatal('필요한 파일을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침 해주세요.');
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){
+    const r=await sb.auth.signInAnonymously();
+    if(r.error)return fatal(/disabled/i.test(r.error.message)?'Supabase에서 익명 로그인(Anonymous sign-ins)이 꺼져 있어요. 설치 안내 3단계를 확인해 주세요.':'장터에 연결하지 못했어요. 잠시 뒤 새로고침 해주세요. (장터가 오래 쉬어서 잠들었을 수도 있어요)');
+    session=r.data.session;
+  }
+  me=session.user.id;
+  await loadMe();
+  $('#loading').hidden=true;
+  if(!meRow){$('#gate').hidden=false;$('#gateCode').focus();return}
+  loadAll();
+})();
+}
+</script>
+</body>
+</html>
