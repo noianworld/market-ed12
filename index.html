@@ -83,7 +83,7 @@ label.f textarea{min-height:110px;resize:vertical}
 .thumbs img{width:100%;height:100%;object-fit:cover}
 .thumbs button{position:absolute;right:3px;top:3px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff}
 .gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory}
-.gal img{flex:none;width:100%;max-height:58vh;object-fit:contain;background:var(--soft);border-radius:12px;scroll-snap-align:start}
+.gal img{flex:none;width:100%;max-height:44vh;object-fit:contain;background:var(--soft);border-radius:12px;scroll-snap-align:start}
 .stbtns{display:flex;gap:6px;flex-wrap:wrap}
 .stbtns button{min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:transparent;font-weight:500}
 .stbtns button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -100,6 +100,7 @@ label.f textarea{min-height:110px;resize:vertical}
 .cmph img{width:120px;height:120px;object-fit:cover;border-radius:10px;display:block;background:var(--soft)}
 .cmf{display:flex;flex-direction:column;gap:8px}
 .cmf textarea{width:100%;min-height:72px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:16px;resize:vertical}
+.lnk{border:0;background:none;padding:0;color:var(--blue);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;min-height:auto}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .mem{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .gate{position:fixed;inset:0;background:var(--blue);color:#fff;display:grid;place-items:center;z-index:20;padding:20px}
@@ -324,7 +325,7 @@ function openView(id){
   $('#vBody').innerHTML=`
     ${it.photos?.length?`<div class="gal">${it.photos.map(p=>`<img src="${esc(pub(p))}" alt="">`).join('')}</div>`:''}
     <div class="row" style="justify-content:space-between"><span class="price" style="font-size:26px">${won(it.price)}</span><span class="tag ${it.status}" style="position:static">${ST[it.status]}</span></div>
-    <div class="small">${esc(CATN[it.cat]||'그 외')} · ${esc(it.cond)} · ${esc(who(it.author))} · ${ago(it.created_at)}${edited?' (수정됨)':''}</div>
+    <div class="small">${esc(CATN[it.cat]||'그 외')} · ${esc(it.cond)} · ${esc(who(it.author))} · ${ago(it.created_at)}${edited?' (수정됨)':''} · <button type="button" class="lnk" id="toCm">${(n=>n?`댓글 ${n}개 보기`:'댓글 쓰기')(comments.filter(x=>x.item_id===it.id).length)}</button></div>
     ${it.descr?`<p class="desc">${esc(it.descr)}</p>`:''}
     ${c?`<div class="contact"><span>${isUrl?`<a href="${esc(c)}" target="_blank" rel="noopener">오픈채팅 열기</a>`:'연락: <b>'+esc(c)+'</b>'}</span><button class="btn" id="cp">복사</button></div>`:'<p class="small" style="margin:0">연락 방법이 없어요. 단톡방에서 물어봐 주세요.</p>'}
     ${ed?`<div><div class="small" style="margin-bottom:6px">판매 상태 바꾸기</div><div class="stbtns">${Object.entries(ST).map(([k,v])=>`<button data-st="${k}" aria-pressed="${it.status===k}">${v}</button>`).join('')}</div></div>
@@ -338,6 +339,7 @@ function openView(id){
     ${cmtHTML(it)}`;
   if(!$('#view').open)$('#view').showModal();
   bindCmts(it);
+  $('#toCm').addEventListener('click',()=>{$('.cm').scrollIntoView({behavior:'smooth',block:'start'});setTimeout(()=>$('#cText').focus({preventScroll:true}),400)});
   $('#cp')?.addEventListener('click',async ev=>{try{await navigator.clipboard.writeText(c);ev.target.textContent='복사됨'}catch(e){ev.target.textContent='직접 복사해 주세요'}});
   $('#unlock')?.addEventListener('submit',async ev=>{ev.preventDefault();const pw=$('#uPw').value;if(!pw)return;
     $('#uBtn').disabled=true;$('#uErr').textContent='';
